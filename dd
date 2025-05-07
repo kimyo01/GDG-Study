@@ -1,1 +1,163 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Replace 'path/to/your/train.csv' with the actual path
+file_path = '/content/drive/MyDrive/train.csv'
+df = pd.read_csv(file_path)
+
+print("1. 데이터 구조확인")
+print(df.info())
+print("\n2. 기초 통계 요약")
+print(df.describe())
+
+print("\n3. 결측치 개수 확인")
+print(df.isnull().sum())
+
+plt.figure(figsize=(8,4))
+sns.histplot(df['Age'].dropna(), bins=30, kde=True)
+plt.title('Age Distribution')
+plt.xlabel('Age')
+plt.ylabel('Count')
+plt.show()
+
+print("\n4. 이상치 확인")
+plt.figure(figsize=(6,4))
+sns.boxplot(x=df['Age'])
+plt.title('Age Outliers')
+plt.show()
+
+print("\n5. 성별에 따른 생존수")
+plt.figure(figsize=(6,4))
+sns.countplot(x='Survived', hue='Sex', data=df)
+plt.title('Survival Count by Gender')
+plt.xlabel('Survived (0 = No, 1 = Yes)')
+plt.ylabel('Count')
+plt.show()
+
+print("\n6. 수치형 변수 간 상관관계 히트맵")
+numeric_df = df.select_dtypes(include='number')
+plt.figure(figsize=(10,8))
+sns.heatmap(numeric_df.corr(), annot=True, fmt='.2f', cmap='Blues')
+plt.title('Correaltion Heatmap')
+plt.show()
+
+print("\n7. 수치형 변수 관계 시각화")
+sns.pairplot(df[['Age', 'Fare', 'Survived']].dropna())
+plt.suptitle('Pairwise Relationships', y=1.02)
+plt.show()
+
+# 8. 성별 + 객실 등급별 생존률 시각화
+import numpy as np
+
+# 생존률 계산을 위한 데이터프레임 생성
+grouped = df.groupby(['Pclass', 'Sex'])['Survived'].mean().reset_index()
+
+# 시각화 1: 객실 등급별, 성별 생존률 비교
+plt.figure(figsize=(8, 6))
+sns.barplot(x='Pclass', y='Survived', hue='Sex', data=grouped, palette='Set2')
+plt.title('Survival Rate by Class and Gender')
+plt.ylabel('Survival Rate')
+plt.xlabel('Passenger Class')
+plt.ylim(0, 1)
+plt.show()
+
+# 시각화 2: 여성만 대상으로 객실 등급별 생존률
+female_grouped = df[df['Sex'] == 'female'].groupby('Pclass')['Survived'].mean().reset_index()
+plt.figure(figsize=(6, 4))
+sns.barplot(x='Pclass', y='Survived', data=female_grouped, palette='coolwarm')
+plt.title('Survival Rate by Class (Females Only)')
+plt.ylabel('Survival Rate')
+plt.xlabel('Passenger Class')
+plt.ylim(0, 1)
+plt.show()
+
+# 시각화 3: 남성만 대상으로 객실 등급별 생존률
+male_grouped = df[df['Sex'] == 'male'].groupby('Pclass')['Survived'].mean().reset_index()
+plt.figure(figsize=(6, 4))
+sns.barplot(x='Pclass', y='Survived', data=male_grouped, palette='coolwarm')
+plt.title('Survival Rate by Class (Males Only)')
+plt.ylabel('Survival Rate')
+plt.xlabel('Passenger Class')
+plt.ylim(0, 1)
+plt.show()
+
+
+# 1. 탑승 항구(Embarked)별 생존률 시각화
+plt.figure(figsize=(6, 4))
+sns.barplot(x='Embarked', y='Survived', data=df, estimator='mean', palette='pastel')
+plt.title('Survival Rate by Embarked Port')
+plt.xlabel('Embarked (S = Southampton, C = Cherbourg, Q = Queenstown)')
+plt.ylabel('Survival Rate')
+plt.ylim(0, 1)
+plt.show()
+
+# 2. 직함(Title) 추출 및 생존률 분석
+# 이름에서 직함을 추출 (예: Mr, Mrs, Miss 등)
+df['Title'] = df['Name'].str.extract(' ([A-Za-z]+)\.', expand=False)
+
+# 직함 그룹 정리 (드물거나 유사한 직함은 통합)
+df['Title'] = df['Title'].replace({
+    'Mlle': 'Miss', 'Ms': 'Miss', 'Mme': 'Mrs',
+    'Lady': 'Royalty', 'Countess': 'Royalty', 'Dona': 'Royalty',
+    'Dr': 'Rare', 'Rev': 'Rare', 'Col': 'Rare', 'Major': 'Rare',
+    'Sir': 'Royalty', 'Jonkheer': 'Royalty', 'Capt': 'Rare', 'Don': 'Royalty'
+})
+
+# 직함별 생존률 시각화
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Title', y='Survived', data=df, estimator='mean', palette='muted')
+plt.title('Survival Rate by Title')
+plt.xlabel('Title')
+plt.ylabel('Survival Rate')
+plt.ylim(0, 1)
+plt.show()
+
+# 11. 혼자 탑승 여부 파생 변수 생성
+df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+df['IsAlone'] = df['FamilySize'].apply(lambda x: 1 if x == 1 else 0)
+
+# 시각화: IsAlone에 따른 생존률
+plt.figure(figsize=(6, 4))
+sns.barplot(x='IsAlone', y='Survived', data=df, palette='Set1')
+plt.title('Survival Rate: Alone vs With Family')
+plt.xlabel('Is Alone (1 = Alone, 0 = With Family)')
+plt.ylabel('Survival Rate')
+plt.ylim(0, 1)
+plt.xticks([0, 1], ['With Family', 'Alone'])
+plt.show()
+
+# 12. FamilySize를 구간화하여 새로운 변수 생성
+def categorize_family_size(size):
+    if size == 1:
+        return 'Single'
+    elif 2 <= size <= 4:
+        return 'Small'
+    else:
+        return 'Large'
+
+df['FamilyCategory'] = df['FamilySize'].apply(categorize_family_size)
+
+# 시각화: 가족 규모별 생존률
+plt.figure(figsize=(7, 5))
+sns.barplot(x='FamilyCategory', y='Survived', data=df, order=['Single', 'Small', 'Large'], palette='Set2')
+plt.title('Survival Rate by Family Size Category')
+plt.xlabel('Family Size Category')
+plt.ylabel('Survival Rate')
+plt.ylim(0, 1)
+plt.show()
+
+# 개수 기준
+family_count = df.groupby(['Pclass', 'FamilyCategory']).size().reset_index(name='Count')
+
+plt.figure(figsize=(8, 6))
+sns.barplot(x='Pclass', y='Count', hue='FamilyCategory',
+            data=family_count, hue_order=['Single', 'Small', 'Large'], palette='Set3')
+plt.title('Family Size Count per Passenger Class')
+plt.ylabel('Count')
+plt.xlabel('Passenger Class')
+plt.legend(title='Family Size Category')
+plt.show()
+
+
 
