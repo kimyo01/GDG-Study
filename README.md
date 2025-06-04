@@ -1,1 +1,1 @@
-추가하겠습니다
+2025 GDG MLightenment Study
