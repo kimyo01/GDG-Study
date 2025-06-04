@@ -112,6 +112,3 @@ submission = pd.DataFrame({
     'PassengerId': test_ids,
     'Survived': preds
 })
-filename = f"titanic_best_simplified_{best_model_name}_acc{best_acc:.4f}.csv"
-submission.to_csv(filename, index=False)
-print(f"\n📁 제출 파일 저장 완료: {filename}")
